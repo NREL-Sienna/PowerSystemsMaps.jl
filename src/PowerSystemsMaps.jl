@@ -11,6 +11,7 @@ export plot
 export plot!
 export plot_net
 export plot_net!
+export plot_components!
 export make_graph
 
 include("plot_network.jl")

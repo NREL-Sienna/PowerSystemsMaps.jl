@@ -1,7 +1,7 @@
 
 PT = GeometryBasics.Point{2,Float64}
-const DEFAULT_LON = "37.8270"
-const DEFAULT_LAT = "-122.8230"
+const DEFAULT_LON = "-122.8230"
+const DEFAULT_LAT = "37.8270"
 
 function color_nodes!(
     g,
@@ -13,7 +13,8 @@ function color_nodes!(
 )
     alpha = Vector()
     for (ix, b) in enumerate(get_components(Bus, sys))
-        a = (haskey(get_ext(b), "lat") & haskey(get_ext(b), "lon")) ? 1.0 : 0.1
+        ext = get_ext(b)
+        a = (haskey(ext, "lat") & haskey(ext, "lon")) || (haskey(ext, "latitude") & haskey(ext, "longitude")) ? 1.0 : 0.1
         push!(alpha, a)
     end
     set_prop!(g, :nodecolor, node_colors)
@@ -219,14 +220,32 @@ end
 function plot_components!(p, components, color, markersize, label)
     labels = get_name.(components)
     lat_lons = get_ext.(get_bus.(components))
-    xy =
-        x -> lonlat_to_webmercator(
-            parse.(Float64, (get(x, "longitude", get(x, "lon", DEFAULT_LON)), get(x, "latitde", get(x, "lat", DEFAULT_LAT)))),
-        )
+    plot_components!(p, labels, lat_lons, color, markersize, label)
+end
+
+function plot_components!(p, components::PowerSystems.FlattenIteratorWrapper{Bus}, color, markersize, label)
+    labels = get_name.(components)
+    lat_lons = get_ext.(components)
+    plot_components!(p, labels, lat_lons, color, markersize, label)
+end
+
+function get_longitude(ext)
+    lon = get(ext, "longitude", get(ext, "lon", DEFAULT_LON))
+    return parse(Float64, "$lon")
+end
+function get_latitude(ext)
+    lat = get(ext, "latitude", get(ext, "lat", DEFAULT_LAT))
+    return parse(Float64, "$lat")
+end
+
+function plot_components!(p, labels, lat_lons, color, markersize, label)
+    xy = [lonlat_to_webmercator((get_longitude(l), get_latitude(l))) for l in lat_lons]
+    x = first.(xy)
+    y = last.(xy)
     scatter!(
         p,
-        first.(xy.(lat_lons)),
-        last.(xy.(lat_lons)),
+        x,
+        y,
         color = color,
         markersize = markersize,
         hover = labels,
@@ -236,13 +255,13 @@ end
 
 component_locs(components) = collect(
     zip(
-        [parse(Float64, get(x, "latitude", get(x, "lat", DEFAULT_LAT))) for x in get_ext.(get_bus.(components))],
-        [parse(Float64, get(x, "longitude", get(x, "lon", DEFAULT_LON))) for x in get_ext.(get_bus.(components))]
+        [get_latitude(x) for x in get_ext.(get_bus.(components))],
+        [get_longitude(x) for x in get_ext.(get_bus.(components))]
     ),
 )
 component_locs(components::PowerSystems.IS.FlattenIteratorWrapper{Bus}) = collect(
     zip(
-        [parse(Float64, get(x, "latitude", get(x, "lat", DEFAULT_LAT))) for x in get_ext.(components)],
-        [parse(Float64, get(x, "longitude", get(x, "lon", DEFAULT_LON))) for x in get_ext.(components)]
+        [get_latitude(x) for x in get_ext.(components)],
+        [get_longitude(x) for x in get_ext.(components)]
     ),
 )
