@@ -14,7 +14,9 @@ function color_nodes!(
     alpha = Vector()
     for (ix, b) in enumerate(get_components(Bus, sys))
         ext = get_ext(b)
-        a = (haskey(ext, "lat") & haskey(ext, "lon")) || (haskey(ext, "latitude") & haskey(ext, "longitude")) ? 1.0 : 0.1
+        a =
+            (haskey(ext, "lat") & haskey(ext, "lon")) ||
+            (haskey(ext, "latitude") & haskey(ext, "longitude")) ? 1.0 : 0.1
         push!(alpha, a)
     end
     set_prop!(g, :nodecolor, node_colors)
@@ -128,7 +130,7 @@ function plot_net!(p::Plots.Plot, g; kwargs...)
     linewidth = get(kwargs, :linewidth, 1.0)
     linecolor = get(kwargs, :linecolor, "black")
     buffer = get(kwargs, :buffer, 0.75e5)
-    size = get(kwargs, :size, (600,800))
+    size = get(kwargs, :size, (600, 800))
     xlim = get(kwargs, :xlim, (minimum(first.(m)) - buffer, maximum(first.(m)) + buffer))
     ylim = get(kwargs, :ylim, (minimum(last.(m)) - buffer, maximum(last.(m)) + buffer))
 
@@ -164,7 +166,7 @@ function plot_net!(p::Plots.Plot, g; kwargs...)
         legend_ontcolor = :red,
         xlim = xlim,
         ylim = ylim,
-        size = size
+        size = size,
     )
     return p
 end
@@ -203,7 +205,7 @@ function lonlat_to_webmercator(xy::Shapefile.Point)
     return lonlat_to_webmercator(xy.x, xy.y)
 end
 
-function lonlat_to_webmercator(shp::Vector{Union{Missing, Shapefile.Polygon}})
+function lonlat_to_webmercator(shp::Vector{Union{Missing,Shapefile.Polygon}})
     return [lonlat_to_webmercator(polygon) for polygon in shp]
 end
 
@@ -213,7 +215,7 @@ function lonlat_to_webmercator(poly::Shapefile.Polygon)
     return Shapefile.Polygon(
         Shapefile.Rect(left, bottom, right, top),
         poly.parts,
-        [Shapefile.Point(x, y) for (x, y) in lonlat_to_webmercator.(poly.points)]
+        [Shapefile.Point(x, y) for (x, y) in lonlat_to_webmercator.(poly.points)],
     )
 end
 
@@ -223,7 +225,13 @@ function plot_components!(p, components, color, markersize, label)
     plot_components!(p, labels, lat_lons, color, markersize, label)
 end
 
-function plot_components!(p, components::PowerSystems.FlattenIteratorWrapper{Bus}, color, markersize, label)
+function plot_components!(
+    p,
+    components::PowerSystems.FlattenIteratorWrapper{Bus},
+    color,
+    markersize,
+    label,
+)
     labels = get_name.(components)
     lat_lons = get_ext.(components)
     plot_components!(p, labels, lat_lons, color, markersize, label)
@@ -242,26 +250,18 @@ function plot_components!(p, labels, lat_lons, color, markersize, label)
     xy = [lonlat_to_webmercator((get_longitude(l), get_latitude(l))) for l in lat_lons]
     x = first.(xy)
     y = last.(xy)
-    scatter!(
-        p,
-        x,
-        y,
-        color = color,
-        markersize = markersize,
-        hover = labels,
-        label = label,
-    )
+    scatter!(p, x, y, color = color, markersize = markersize, hover = labels, label = label)
 end
 
 component_locs(components) = collect(
     zip(
         [get_latitude(x) for x in get_ext.(get_bus.(components))],
-        [get_longitude(x) for x in get_ext.(get_bus.(components))]
+        [get_longitude(x) for x in get_ext.(get_bus.(components))],
     ),
 )
 component_locs(components::PowerSystems.IS.FlattenIteratorWrapper{Bus}) = collect(
     zip(
         [get_latitude(x) for x in get_ext.(components)],
-        [get_longitude(x) for x in get_ext.(components)]
+        [get_longitude(x) for x in get_ext.(components)],
     ),
 )
