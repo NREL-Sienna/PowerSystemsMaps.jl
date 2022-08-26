@@ -2,9 +2,11 @@ module PowerSystemsMaps
 
 using PowerSystems
 using Graphs, MetaGraphs #graphs
-using Plots, Colors
-using NetworkLayout #determine node locations
-using Shapefile
+using Plots
+import Colors
+import NetworkLayout
+import NetworkLayout: AbstractLayout, IterativeLayout
+import Shapefile
 import GeometryBasics
 
 export plot
@@ -15,5 +17,6 @@ export plot_components!
 export make_graph
 
 include("plot_network.jl")
+include("sfdp_fixed.jl")
 
 end # module PowerSystemsMaps

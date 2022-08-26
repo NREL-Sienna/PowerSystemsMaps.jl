@@ -1,13 +1,13 @@
 
-PT = GeometryBasics.Point{2,Float64}
+PT = GeometryBasics.Point{2, Float64}
 const DEFAULT_LON = "-122.8230"
 const DEFAULT_LAT = "37.8270"
 
 function color_nodes!(
     g,
     sys,
-    node_colors::Vector{RGB{Colors.N0f8}} = map(
-        x -> RGB{Colors.N0f8}(1.0, 0.0, 0.0),
+    node_colors::Vector{Colors.RGB{Colors.N0f8}} = map(
+        x -> Colors.RGB{Colors.N0f8}(1.0, 0.0, 0.0),
         1:nv(g),
     ),
 )
@@ -23,12 +23,16 @@ function color_nodes!(
     set_prop!(g, :alpha, alpha)
 end
 
-function color_nodes!(g, sys, color_by::Type{T}) where {T<:AggregationTopology}
+function color_nodes!(g, sys, color_by::Type{T}) where {T <: AggregationTopology}
     # Generate n maximally distinguishable colors in LCHab space.
     areas = get_components(color_by, sys)
     buses = get_components(Bus, sys)
-    area_colors =
-        Dict(zip(get_name.(areas), distinguishable_colors(length(areas), colorant"blue")))
+    area_colors = Dict(
+        zip(
+            get_name.(areas),
+            Colors.distinguishable_colors(length(areas), Colors.colorant"blue"),
+        ),
+    )
     node_colors = getindex.(Ref(area_colors), get_name.(get_area.(buses)))
     color_nodes!(g, sys, node_colors)
     set_prop!(g, :group, get_name.(get_area.(buses)))
@@ -67,42 +71,34 @@ function make_graph(sys::PowerSystems.System; kwargs...)
     a = adjacency_matrix(g) # generates a sparse adjacency matrix
     #a = Adjacency(sys, check_connectivity = false).data
     fixed = .!isempty.(get_ext.(buses))
-    initial_positions = map(x -> PT(0.0, 0.0), 1:size(a, 1))
+    initial_positions = Vector{PT}()
     for (ix, b) in enumerate(buses)
         if !isempty(get_ext(b))
             ext = get_ext(b)
             lat = tryparse(Float64, "$(get(ext, "latitude", get(ext, "lat", nothing)))")
             lon = tryparse(Float64, "$(get(ext, "longitude", get(ext, "lon", nothing)))")
             if !isnothing(lat) && !isnothing(lon)
-                initial_positions[ix] = PT(lon, lat)
+                push!(initial_positions, PT(lon, lat))
             else
                 fixed[ix] = false
             end
         end
     end
-    nz_pos = initial_positions[initial_positions.!=PT(0.0, 0.0)]
-    max_pos = PT(maximum(first.(nz_pos)), maximum(last.(nz_pos)))
-    min_pos = PT(minimum(first.(nz_pos)), minimum(last.(nz_pos)))
-    lat_range = first(max_pos) - first(min_pos)
-    lon_range = last(max_pos) - last(min_pos)
+    sort_ids = vcat(findall(fixed), findall(.!fixed))
+    orig_ids = sortperm(sort_ids)
+    sorted_a = a[sort_ids, sort_ids]
 
-    initial_positions[initial_positions.==PT(0.0, 0.0)] = map(
-        x -> (lat_range, lon_range) .* rand(PT) .+ (first(min_pos), last(min_pos)),
-        1:(length(initial_positions)-length(nz_pos)),
-    )
-
-    @info "calculating node locations with SFDP"
+    @info "calculating node locations with SFDP_Fixed"
     K = get(kwargs, :K, 0.1)
-    network = NetworkLayout.SFDP.layout(
-        a,#(a .- 1) .* -1,
-        NetworkLayout.SFDP.Point2f0,
+    network = sfdp_fixed(
+        sorted_a,
         tol = 1.0,
         C = 0.0002,
         K = K,
         iterations = 100,
-        fixed = fixed,
-        startpositions = initial_positions,
-    ) # generate 2D layout
+        fixed = true,
+        initialpos = initial_positions,
+    )[orig_ids] # generate 2D layout and sort back to order of a
 
     set_prop!(g, :x, first.(network))
     set_prop!(g, :y, last.(network))
@@ -205,7 +201,7 @@ function lonlat_to_webmercator(xy::Shapefile.Point)
     return lonlat_to_webmercator(xy.x, xy.y)
 end
 
-function lonlat_to_webmercator(shp::Vector{Union{Missing,Shapefile.Polygon}})
+function lonlat_to_webmercator(shp::Vector{Union{Missing, Shapefile.Polygon}})
     return [lonlat_to_webmercator(polygon) for polygon in shp]
 end
 
