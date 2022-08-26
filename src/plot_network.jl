@@ -1,13 +1,13 @@
 
-PT = GeometryBasics.Point{2,Float64}
+PT = GeometryBasics.Point{2, Float64}
 const DEFAULT_LON = "-122.8230"
 const DEFAULT_LAT = "37.8270"
 
 function color_nodes!(
     g,
     sys,
-    node_colors::Vector{RGB{Colors.N0f8}} = map(
-        x -> RGB{Colors.N0f8}(1.0, 0.0, 0.0),
+    node_colors::Vector{Colors.RGB{Colors.N0f8}} = map(
+        x -> Colors.RGB{Colors.N0f8}(1.0, 0.0, 0.0),
         1:nv(g),
     ),
 )
@@ -23,12 +23,16 @@ function color_nodes!(
     set_prop!(g, :alpha, alpha)
 end
 
-function color_nodes!(g, sys, color_by::Type{T}) where {T<:AggregationTopology}
+function color_nodes!(g, sys, color_by::Type{T}) where {T <: AggregationTopology}
     # Generate n maximally distinguishable colors in LCHab space.
     areas = get_components(color_by, sys)
     buses = get_components(Bus, sys)
-    area_colors =
-        Dict(zip(get_name.(areas), distinguishable_colors(length(areas), colorant"blue")))
+    area_colors = Dict(
+        zip(
+            get_name.(areas),
+            Colors.distinguishable_colors(length(areas), Colors.colorant"blue"),
+        ),
+    )
     node_colors = getindex.(Ref(area_colors), get_name.(get_area.(buses)))
     color_nodes!(g, sys, node_colors)
     set_prop!(g, :group, get_name.(get_area.(buses)))
@@ -84,9 +88,9 @@ function make_graph(sys::PowerSystems.System; kwargs...)
     orig_ids = sortperm(sort_ids)
     sorted_a = a[sort_ids, sort_ids]
 
-    @info "calculating node locations with SFDP"
+    @info "calculating node locations with SFDPFixed"
     K = get(kwargs, :K, 0.1)
-    network = NetworkLayout.sfdp(
+    network = NetworkLayout.sfdp_fixed(
         sorted_a,
         tol = 1.0,
         C = 0.0002,
@@ -197,7 +201,7 @@ function lonlat_to_webmercator(xy::Shapefile.Point)
     return lonlat_to_webmercator(xy.x, xy.y)
 end
 
-function lonlat_to_webmercator(shp::Vector{Union{Missing,Shapefile.Polygon}})
+function lonlat_to_webmercator(shp::Vector{Union{Missing, Shapefile.Polygon}})
     return [lonlat_to_webmercator(polygon) for polygon in shp]
 end
 
