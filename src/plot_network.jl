@@ -88,9 +88,9 @@ function make_graph(sys::PowerSystems.System; kwargs...)
     orig_ids = sortperm(sort_ids)
     sorted_a = a[sort_ids, sort_ids]
 
-    @info "calculating node locations with SFDPFixed"
+    @info "calculating node locations with SFDP_Fixed"
     K = get(kwargs, :K, 0.1)
-    network = NetworkLayout.sfdp_fixed(
+    network = sfdp_fixed(
         sorted_a,
         tol = 1.0,
         C = 0.0002,

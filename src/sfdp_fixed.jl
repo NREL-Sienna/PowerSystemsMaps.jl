@@ -1,7 +1,12 @@
-export SFDPFixed, sfdp_fixed
+#export SFDP_Fixed, sfdp_fixed
+
+#extras
 const NL = NetworkLayout
+import NetworkLayout: norm
+sfdp_fixed(g; kwargs...) = NL.layout(SFDP_Fixed(; kwargs...), g)
+
 """
-    SFDPFixed(; kwargs...)(adj_matrix)
+    SFDP_Fixed(; kwargs...)(adj_matrix)
     sfdp_fixed(adj_matrix; kwargs...)
 
 Using the Spring-Electric [model suggested by Yifan Hu](http://yifanhu.net/PUB/graph_draw_small.pdf).
@@ -26,7 +31,7 @@ the nodes.
 - `seed=1`: Seed for random initial positions.
 - `fixed = false` : Anchors initial positions.
 """
-NL.@addcall struct SFDPFixed{Dim, Ptype, T <: AbstractFloat} <: IterativeLayout{Dim, Ptype}
+struct SFDP_Fixed{Dim, Ptype, T <: AbstractFloat} <: IterativeLayout{Dim, Ptype}
     tol::T
     C::T
     K::T
@@ -36,8 +41,8 @@ NL.@addcall struct SFDPFixed{Dim, Ptype, T <: AbstractFloat} <: IterativeLayout{
     fixed::Bool
 end
 
-# TODO: check SFDPFixed default parameters
-function SFDPFixed(;
+# TODO: check SFDP_Fixed default parameters
+function SFDP_Fixed(;
     dim = 2,
     Ptype = Float64,
     tol = 1.0,
@@ -55,7 +60,7 @@ function SFDPFixed(;
         Ptype == Any && error("Please provide list of NL.Point{N,T} with same T")
         dim = length(eltype(initialpos))
     end
-    return SFDPFixed{dim, Ptype, typeof(tol)}(
+    return SFDP_Fixed{dim, Ptype, typeof(tol)}(
         tol,
         C,
         K,
@@ -67,12 +72,12 @@ function SFDPFixed(;
 end
 
 function Base.iterate(
-    iter::NL.LayoutIterator{SFDPFixed{Dim, Ptype, T}},
+    iter::NL.LayoutIterator{SFDP_Fixed{Dim, Ptype, T}},
 ) where {Dim, Ptype, T}
     algo, adj_matrix = iter.algorithm, iter.adj_matrix
     N = size(adj_matrix, 1)
     M = length(algo.initialpos)
-    rng = MersenneTwister(algo.seed)
+    rng = NL.Random.MersenneTwister(algo.seed)
     startpos = Vector{NL.Point{Dim, Ptype}}(undef, N)
     startposbounds =
         (min = zero(NL.Point{Dim, Ptype}), max = zero((NL.Point{Dim, Ptype})) .+ one(Ptype))
@@ -103,7 +108,7 @@ function Base.iterate(
     return startpos, (1, typemax(T), one(T), 0, startpos, false)
 end
 
-function Base.iterate(iter::NL.LayoutIterator{<:SFDPFixed}, state)
+function Base.iterate(iter::NL.LayoutIterator{<:SFDP_Fixed}, state)
     algo, adj_matrix = iter.algorithm, iter.adj_matrix
     iter, energy0, step, progress, locs0, stopflag = state
     K, C, tol = algo.K, algo.C, algo.tol

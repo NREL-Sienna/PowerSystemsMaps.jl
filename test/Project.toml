@@ -1,0 +1,10 @@
+[deps]
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+PowerSystemCaseBuilder = "f00506e0-b84f-492a-93c2-c0a9afc4364e"
+PowerSystems = "bcd98974-b02a-5e2f-9ee0-a103f5c450dd"
+PowerSystemsMaps = "e146f72c-d4f8-45d3-b3ca-12a16cb68a38"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+TestSetExtensions = "98d24dd4-01ad-11ea-1b02-c9a08f80db04"
