@@ -1,5 +1,5 @@
 # PowerSystemsMaps.jl
-[![main - CI](https://github.com/NREL-SIIP/PowerSystemsMaps.jl/workflows/main%20-%20CI/badge.svg)](https://github.com/NREL-SIIP/PowerSystemsMaps.jl/actions/workflows/main-tests.yml)
+[![main - CI](https://github.com/NREL-SIIP/PowerSystemsMaps.jl/actions/workflows/main-tests.yml/badge.svg)](https://github.com/NREL-SIIP/PowerSystemsMaps.jl/actions/workflows/main-tests.yml)
 [![codecov](https://codecov.io/gh/NREL-SIIP/PowerSystemsMaps.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/NREL-SIIP/PowerSystemsMaps.jl)
 [<img src="https://img.shields.io/badge/slack-@SIIP/PG-blue.svg?logo=slack">](https://join.slack.com/t/nrel-siip/shared_invite/zt-glam9vdu-o8A9TwZTZqqNTKHa7q3BpQ)
 
