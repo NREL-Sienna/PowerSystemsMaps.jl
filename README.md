@@ -8,7 +8,7 @@ A (relatively) simple Julia module for plotting [PowerSystems.jl](https://github
 ## Installation
 
 ```julia
-using Pkg; Pkg.add("https://github.com/NREL-SIIP/PowerSystemsMaps.jl")
+using Pkg; Pkg.add("PowerSystemsMaps")
 ```
 
 ## Example
