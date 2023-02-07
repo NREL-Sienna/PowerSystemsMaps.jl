@@ -178,7 +178,7 @@ function plot_net!(p::Plots.Plot, g; kwargs...)
         group = group,
         hover = nodehover,
         legend = shownodelegend,
-        legend_ontcolor = :red,
+        legend_font_color = :red,
         xlim = xlim,
         ylim = ylim,
         size = size,
