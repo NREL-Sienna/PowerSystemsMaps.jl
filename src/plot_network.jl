@@ -38,6 +38,22 @@ function color_nodes!(g, sys, color_by::Type{T}) where {T <: AggregationTopology
     set_prop!(g, :group, get_name.(get_area.(buses)))
 end
 
+function color_nodes!(g, sys, color_by)
+    # Generate n maximally distinguishable colors in LCHab space.
+    buses = get_components(Bus, sys)
+    colorvals = string.(getfield.(buses, color_by))
+    field_colors = Dict(
+        zip(
+            unique(colorvals),
+            Colors.distinguishable_colors(length(unique(colorvals)), Colors.colorant"blue"),
+        ),
+    )
+    node_colors = getindex.(Ref(field_colors), colorvals)
+    color_nodes!(g, sys, node_colors)
+    set_prop!(g, :group, colorvals)
+end
+
+
 # construct a graph from a PowerSystems.System
 function make_graph(sys::PowerSystems.System; kwargs...)
     @info "creating graph from System"
@@ -65,7 +81,8 @@ function make_graph(sys::PowerSystems.System; kwargs...)
     # color nodes
     #fixed_colors = Dict(zip(unique(fixed), distinguishable_colors(2, colorant"blue")))
     #node_colors = getindex.(Ref(fixed_colors), fixed)
-    color_nodes!(g, sys, Area)
+    color_by = get(kwargs, :color_by, :area)
+    color_nodes!(g, sys, color_by)
 
     # layout nodes
     a = adjacency_matrix(g) # generates a sparse adjacency matrix
@@ -123,8 +140,10 @@ function plot_net!(p::Plots.Plot, g; kwargs...)
     lines = get(kwargs, :lines, false)
     linealpha = get(kwargs, :linealpha, 0.2)
     nodesize = get(kwargs, :nodesize, 2.0)
+    nodehover = get(kwargs, :nodehover, get_prop(g, :name))
     linewidth = get(kwargs, :linewidth, 1.0)
     linecolor = get(kwargs, :linecolor, "black")
+    linehover = get(kwargs, :linehover, "")
     buffer = get(kwargs, :buffer, 0.75e5)
     size = get(kwargs, :size, (600, 800))
     xlim = get(kwargs, :xlim, (minimum(first.(m)) - buffer, maximum(first.(m)) + buffer))
@@ -157,7 +176,7 @@ function plot_net!(p::Plots.Plot, g; kwargs...)
         markerstrokecolor = get(kwargs, :nodecolor, get_prop(g, :nodecolor)),
         markersize = nodesize,
         group = group,
-        hover = get_prop(g, :name),
+        hover = nodehover,
         legend = shownodelegend,
         legend_ontcolor = :red,
         xlim = xlim,
