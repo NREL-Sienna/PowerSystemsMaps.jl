@@ -27,7 +27,7 @@ function make_test_sys()
     sys = System(joinpath(TEST_DIR, "test_data", "case_ACTIVSg200.m"))
     locs = CSV.read(joinpath(TEST_DIR, "test_data", "bus_locs.csv"), DataFrames.DataFrame)
     for row in DataFrames.eachrow(locs)
-        bus = first(get_components(x -> occursin(row.name, get_name(x)),Bus, sys))
+        bus = first(get_components(x -> occursin(row.name, get_name(x)), Bus, sys))
         !isnothing(bus) &&
             set_ext!(bus, Dict("latitude" => row.latitude, "longitude" => row.longitude))
     end

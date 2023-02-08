@@ -5,10 +5,7 @@ makedocs(
     format = Documenter.HTML(),
     sitename = "PowerSystemsMaps.jl",
     authors = "Clayton Barrows",
-    pages = [
-        "Home" => "index.md",
-        "Function Index" => "api.md",
-    ],
+    pages = ["Home" => "index.md", "Function Index" => "api.md"],
 )
 
 Documenter.deploydocs(

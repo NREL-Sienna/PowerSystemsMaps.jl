@@ -53,7 +53,6 @@ function color_nodes!(g, sys, color_by)
     set_prop!(g, :group, colorvals)
 end
 
-
 """
 construct a graph from a PowerSystems.System
 
