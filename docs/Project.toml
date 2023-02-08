@@ -1,0 +1,4 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+DocumenterTools = "35a29f4d-8980-5a13-9543-d66fff28ecb8"
+PowerSystemsMaps = "e146f72c-d4f8-45d3-b3ca-12a16cb68a38"
