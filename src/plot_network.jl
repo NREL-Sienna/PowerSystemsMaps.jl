@@ -15,8 +15,12 @@ function color_nodes!(
     for (ix, b) in enumerate(get_components(Bus, sys))
         ext = get_ext(b)
         a =
-            (haskey(ext, "lat") & haskey(ext, "lon")) ||
-            (haskey(ext, "latitude") & haskey(ext, "longitude")) ? 1.0 : 0.1
+            if (haskey(ext, "lat") & haskey(ext, "lon")) ||
+               (haskey(ext, "latitude") & haskey(ext, "longitude"))
+                1.0
+            else
+                0.1
+            end
         push!(alpha, a)
     end
     set_prop!(g, :nodecolor, node_colors)
@@ -114,7 +118,7 @@ function make_graph(sys::PowerSystems.System; kwargs...)
     @info "calculating node locations with SFDP_Fixed"
     K = get(kwargs, :K, 0.1)
     network = sfdp_fixed(
-        sorted_a,
+        sorted_a;
         tol = 1.0,
         C = 0.0002,
         K = K,
@@ -195,7 +199,7 @@ function plot_net!(p::Plots.Plot, g; kwargs...)
             p = plot!(
                 p,
                 [first(m[e.src]), first(m[e.dst])],
-                [last(m[e.src]), last(m[e.dst])],
+                [last(m[e.src]), last(m[e.dst])];
                 color = linecolor,
                 label = "",
                 alpha = linealpha,
@@ -210,7 +214,7 @@ function plot_net!(p::Plots.Plot, g; kwargs...)
     p = scatter!(
         p,
         first.(m),
-        last.(m),
+        last.(m);
         markercolor = get(kwargs, :nodecolor, get_prop(g, :nodecolor)),
         markeralpha = get(kwargs, :nodealpha, get_prop(g, :alpha)),
         markerstrokecolor = get(kwargs, :nodecolor, get_prop(g, :nodecolor)),
@@ -308,7 +312,7 @@ function plot_components!(p, labels, lat_lons, color, markersize, label)
     xy = [lonlat_to_webmercator((get_longitude(l), get_latitude(l))) for l in lat_lons]
     x = first.(xy)
     y = last.(xy)
-    scatter!(p, x, y, color = color, markersize = markersize, hover = labels, label = label)
+    scatter!(p, x, y; color = color, markersize = markersize, hover = labels, label = label)
 end
 
 component_locs(components) = collect(

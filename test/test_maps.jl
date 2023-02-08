@@ -2,7 +2,7 @@
 sys = make_test_sys()
 
 @testset "test maps" begin
-    g = make_graph(sys, K = 0.01)
+    g = make_graph(sys; K = 0.01)
     @test typeof(g) == PSM.MetaGraphs.MetaGraph{Int64, Float64}
     @test length(PSM.get_prop(g, :x)) == 200
     shp = PSM.Shapefile.shapes(
@@ -15,7 +15,7 @@ sys = make_test_sys()
 
     # plot a map from shapefile
     p = plot(
-        shp,
+        shp;
         fillcolor = "grey",
         background_color = "white",
         linecolor = "darkgrey",
@@ -28,7 +28,7 @@ sys = make_test_sys()
     # plot the network on the map
     p = plot_net!(
         p,
-        g,
+        g;
         nodesize = 3.0,
         linecolor = "blue",
         linewidth = 0.6,
