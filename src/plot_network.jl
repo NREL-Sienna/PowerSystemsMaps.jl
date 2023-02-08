@@ -15,8 +15,12 @@ function color_nodes!(
     for (ix, b) in enumerate(get_components(Bus, sys))
         ext = get_ext(b)
         a =
-            (haskey(ext, "lat") & haskey(ext, "lon")) ||
-            (haskey(ext, "latitude") & haskey(ext, "longitude")) ? 1.0 : 0.1
+            if (haskey(ext, "lat") & haskey(ext, "lon")) ||
+               (haskey(ext, "latitude") & haskey(ext, "longitude"))
+                1.0
+            else
+                0.1
+            end
         push!(alpha, a)
     end
     set_prop!(g, :nodecolor, node_colors)
@@ -53,8 +57,14 @@ function color_nodes!(g, sys, color_by)
     set_prop!(g, :group, colorvals)
 end
 
+"""
+construct a graph from a PowerSystems.System
 
-# construct a graph from a PowerSystems.System
+Accepted kwargs:
+ - `K::Float` : spring force constant for SFDP layout
+ - `color_by::Symbol` : color nodes by (Area, base_voltage, ...)
+ - `name_accessor::Function` : function to access bus names
+"""
 function make_graph(sys::PowerSystems.System; kwargs...)
     @info "creating graph from System"
     buses = get_components(Bus, sys)
@@ -108,7 +118,7 @@ function make_graph(sys::PowerSystems.System; kwargs...)
     @info "calculating node locations with SFDP_Fixed"
     K = get(kwargs, :K, 0.1)
     network = sfdp_fixed(
-        sorted_a,
+        sorted_a;
         tol = 1.0,
         C = 0.0002,
         K = K,
@@ -125,14 +135,49 @@ function make_graph(sys::PowerSystems.System; kwargs...)
     return g
 end
 
-# plot
-#draw(PDF("net.pdf"), gplot(g, first.(network), last.(network), nodefillc=node_colors))
+"""
+plot a network from a graph
 
+Accepted kwargs:
+ - `lines::Bool` : show lines
+ - `linealpha::Union{Float, Vector{Float}}` : line transparency
+ - `nodesize::Union{Float, Vector{Float}}` : node size
+ - `nodehover::Union{String, Vector{String}}` : node hover text
+ - `linewidth::Float` : width of lines
+ - `linecolor::String` : line color
+ - `buffer::Float`
+ - `size::Tuple` : figure size
+ - `xlim::Tuple` : crop x axis
+ - `ylim::Tuple` : crop y axis
+ - `showleged::Bool` : show legend
+ - `nodecolor::String` : node color
+ - `nodealpha::Float` : node transparency
+ - `legend_font_color::String` : legend font color
+"""
 function plot_net(g; kwargs...)
     p = plot()
     plot_net!(p, g; kwargs)
 end
 
+"""
+plot a network from a graph
+
+Accepted kwargs:
+ - `lines::Bool` : show lines
+ - `linealpha::Union{Float, Vector{Float}}` : line transparency
+ - `nodesize::Union{Float, Vector{Float}}` : node size
+ - `nodehover::Union{String, Vector{String}}` : node hover text
+ - `linewidth::Float` : width of lines
+ - `linecolor::String` : line color
+ - `buffer::Float`
+ - `size::Tuple` : figure size
+ - `xlim::Tuple` : crop x axis
+ - `ylim::Tuple` : crop y axis
+ - `showleged::Bool` : show legend
+ - `nodecolor::String` : node color
+ - `nodealpha::Float` : node transparency
+ - `legend_font_color::String` : legend font color
+"""
 function plot_net!(p::Plots.Plot, g; kwargs...)
     x = get_prop(g, :x)
     y = get_prop(g, :y)
@@ -143,7 +188,6 @@ function plot_net!(p::Plots.Plot, g; kwargs...)
     nodehover = get(kwargs, :nodehover, get_prop(g, :name))
     linewidth = get(kwargs, :linewidth, 1.0)
     linecolor = get(kwargs, :linecolor, "black")
-    linehover = get(kwargs, :linehover, "")
     buffer = get(kwargs, :buffer, 0.75e5)
     size = get(kwargs, :size, (600, 800))
     xlim = get(kwargs, :xlim, (minimum(first.(m)) - buffer, maximum(first.(m)) + buffer))
@@ -155,7 +199,7 @@ function plot_net!(p::Plots.Plot, g; kwargs...)
             p = plot!(
                 p,
                 [first(m[e.src]), first(m[e.dst])],
-                [last(m[e.src]), last(m[e.dst])],
+                [last(m[e.src]), last(m[e.dst])];
                 color = linecolor,
                 label = "",
                 alpha = linealpha,
@@ -170,7 +214,7 @@ function plot_net!(p::Plots.Plot, g; kwargs...)
     p = scatter!(
         p,
         first.(m),
-        last.(m),
+        last.(m);
         markercolor = get(kwargs, :nodecolor, get_prop(g, :nodecolor)),
         markeralpha = get(kwargs, :nodealpha, get_prop(g, :alpha)),
         markerstrokecolor = get(kwargs, :nodecolor, get_prop(g, :nodecolor)),
@@ -178,7 +222,7 @@ function plot_net!(p::Plots.Plot, g; kwargs...)
         group = group,
         hover = nodehover,
         legend = shownodelegend,
-        legend_font_color = :red,
+        legend_font_color = get(kwargs, :legend_font_color, :black),
         xlim = xlim,
         ylim = ylim,
         size = size,
@@ -234,6 +278,9 @@ function lonlat_to_webmercator(poly::Shapefile.Polygon)
     )
 end
 
+"""
+add dots for components on existing plot
+"""
 function plot_components!(p, components, color, markersize, label)
     labels = get_name.(components)
     lat_lons = get_ext.(get_bus.(components))
@@ -265,7 +312,7 @@ function plot_components!(p, labels, lat_lons, color, markersize, label)
     xy = [lonlat_to_webmercator((get_longitude(l), get_latitude(l))) for l in lat_lons]
     x = first.(xy)
     y = last.(xy)
-    scatter!(p, x, y, color = color, markersize = markersize, hover = labels, label = label)
+    scatter!(p, x, y; color = color, markersize = markersize, hover = labels, label = label)
 end
 
 component_locs(components) = collect(
