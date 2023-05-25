@@ -29,17 +29,18 @@ end
 
 function color_nodes!(g, sys, color_by::Type{T}) where {T <: AggregationTopology}
     # Generate n maximally distinguishable colors in LCHab space.
-    areas = get_components(color_by, sys)
+    accessor = get_aggregation_topology_accessor(color_by)
+    agg_top = get_components(color_by, sys)
     buses = get_components(Bus, sys)
     area_colors = Dict(
         zip(
-            get_name.(areas),
-            Colors.distinguishable_colors(length(areas), Colors.colorant"blue"),
+            get_name.(agg_top),
+            Colors.distinguishable_colors(length(agg_top), Colors.colorant"blue"),
         ),
     )
-    node_colors = getindex.(Ref(area_colors), get_name.(get_area.(buses)))
+    node_colors = getindex.(Ref(area_colors), get_name.(accessor.(buses)))
     color_nodes!(g, sys, node_colors)
-    set_prop!(g, :group, get_name.(get_area.(buses)))
+    set_prop!(g, :group, get_name.(accessor.(buses)))
 end
 
 function color_nodes!(g, sys, color_by)
@@ -133,6 +134,38 @@ function make_graph(sys::PowerSystems.System; kwargs...)
     set_prop!(g, :name, name_accessor.(buses))
 
     return g
+end
+
+
+
+function plot_lines!(p, sys, line_width)
+    components = collect(get_components(Branch, sys))
+    fr_lat_lon = get_ext.(get_from.(get_arc.(components)))
+    to_lat_lon = get_ext.(get_to.(get_arc.(components)))
+    fr_xy = [PSM.lonlat_to_webmercator((PSM.get_longitude(p), PSM.get_latitude(p))) for p in fr_lat_lon]
+    to_xy = [PSM.lonlat_to_webmercator((PSM.get_longitude(p), PSM.get_latitude(p))) for p in to_lat_lon]
+
+    xy = []
+    groups = []
+    labels = []
+    for (i, c) in enumerate(components)
+        push!(xy, [fr_xy[i][1] fr_xy[i][2]; to_xy[i][1] to_xy[i][2]; NaN NaN])
+        for _ in 1:3
+            push!(groups, get_base_voltage(get_from(get_arc(c))))
+            push!(labels, get_name(c))
+        end
+    end
+    xy = vcat(xy...)
+
+    p = plot!(
+        p,
+        xy[:,1], xy[:,2];
+        linewidth = line_width,
+        hover = labels,
+        group = groups,
+        legend = true
+    )
+    return p
 end
 
 """

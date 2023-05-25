@@ -15,7 +15,7 @@ using Pkg; Pkg.add("PowerSystemsMaps")
 
 ```julia
 using PowerSystems
-using PowerSystemsMaps 
+using PowerSystemsMaps
 PSM = PowerSystemsMaps
 PSM.Plots.plotlyjs() # load the PlotlyJS backend
 
@@ -53,6 +53,6 @@ p = plot_net!(
     shownodelegend = true,
     size = (1500,800),
     buffer = 0.4e4
-)  
+)
 
 ```
