@@ -136,14 +136,18 @@ function make_graph(sys::PowerSystems.System; kwargs...)
     return g
 end
 
-
-
 function plot_lines!(p, sys, line_width)
     components = collect(get_components(Branch, sys))
     fr_lat_lon = get_ext.(get_from.(get_arc.(components)))
     to_lat_lon = get_ext.(get_to.(get_arc.(components)))
-    fr_xy = [PSM.lonlat_to_webmercator((PSM.get_longitude(p), PSM.get_latitude(p))) for p in fr_lat_lon]
-    to_xy = [PSM.lonlat_to_webmercator((PSM.get_longitude(p), PSM.get_latitude(p))) for p in to_lat_lon]
+    fr_xy = [
+        PSM.lonlat_to_webmercator((PSM.get_longitude(p), PSM.get_latitude(p))) for
+        p in fr_lat_lon
+    ]
+    to_xy = [
+        PSM.lonlat_to_webmercator((PSM.get_longitude(p), PSM.get_latitude(p))) for
+        p in to_lat_lon
+    ]
 
     xy = []
     groups = []
@@ -159,11 +163,12 @@ function plot_lines!(p, sys, line_width)
 
     p = plot!(
         p,
-        xy[:,1], xy[:,2];
+        xy[:, 1],
+        xy[:, 2];
         linewidth = line_width,
         hover = labels,
         group = groups,
-        legend = true
+        legend = true,
     )
     return p
 end
