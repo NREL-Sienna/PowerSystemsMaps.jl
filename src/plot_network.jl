@@ -3,6 +3,16 @@ PT = GeometryBasics.Point{2, Float64}
 const DEFAULT_LON = "-122.8230"
 const DEFAULT_LAT = "37.8270"
 
+function set_prop!(g::MetaGraph, field::Symbol, data)
+    for (ix, v) in enumerate(labels(g))
+        g[v][field] = data[ix]
+    end
+end
+
+function get_prop(g::MetaGraph, field::Symbol)
+    return [get(g[v], field, nothing) for v in labels(g)]
+end
+
 function color_nodes!(
     g,
     sys,
@@ -11,20 +21,11 @@ function color_nodes!(
         1:nv(g),
     ),
 )
-    alpha = Vector()
     for (ix, b) in enumerate(get_components(Bus, sys))
-        ext = get_ext(b)
-        a =
-            if (haskey(ext, "lat") & haskey(ext, "lon")) ||
-               (haskey(ext, "latitude") & haskey(ext, "longitude"))
-                1.0
-            else
-                0.1
-            end
-        push!(alpha, a)
+        a = has_supplemental_attributes(b, GeographicInfo) ? 1.0 : 0.1
+        g[get_name(b)][:nodecolor] = node_colors[ix]
+        g[get_name(b)][:alpha] = a
     end
-    set_prop!(g, :nodecolor, node_colors)
-    set_prop!(g, :alpha, alpha)
 end
 
 function color_nodes!(g, sys, color_by::Type{T}) where {T <: AggregationTopology}
@@ -68,56 +69,51 @@ Accepted kwargs:
 """
 function make_graph(sys::PowerSystems.System; kwargs...)
     @info "creating graph from System"
-    buses = get_components(Bus, sys)
-    g = MetaGraph(length(buses))
-    for (i, b) in enumerate(buses)
-        set_props!(
-            g,
-            i,
-            Dict(
-                :name => get_name(b),
-                :number => get_number(b),
-                :area => get_name(get_area(b)),
-            ),
-        )# :nodecolor = node_colors[i], :x = network[i][1], :y = network[i][2]))
-    end
-    set_indexing_prop!(g, :name)
+    g = MetaGraph(
+        Graph();
+        label_type = String,
+        vertex_data_type = Dict{Symbol, Any},
+        edge_data_type = Vector{<:Branch},
+        graph_data = "data",
+    )
 
+    for b in get_components(Bus, sys)
+        data = Dict(
+            :name => get_name(b),
+            :number => get_number(b),
+            :area => get_name(get_area(b)),
+            :fixed => false,
+        )
+        if has_supplemental_attributes(GeographicInfo, b)
+            (lon, lat) = get_lonlat(b)
+            data[:initial_position] = PT(lon, lat)
+            data[:fixed] = true
+        end
+        g[get_name(b)] = data
+    end
     for a in get_components(Arc, sys)
-        from = get_name(get_from(a))
-        to = get_name(get_to(a))
-        add_edge!(g, g[from, :name], g[to, :name])
+        fr = get_from(a)
+        to = get_to(a)
+        g[get_name.([fr, to])...] =
+            collect(get_components(x -> get_arc(x) == a, Branch, sys))
     end
 
     # color nodes
-    #fixed_colors = Dict(zip(unique(fixed), distinguishable_colors(2, colorant"blue")))
-    #node_colors = getindex.(Ref(fixed_colors), fixed)
     color_by = get(kwargs, :color_by, :area)
     color_nodes!(g, sys, color_by)
 
     # layout nodes
     a = adjacency_matrix(g) # generates a sparse adjacency matrix
-    #a = Adjacency(sys, check_connectivity = false).data
-    fixed = .!isempty.(get_ext.(buses))
-    initial_positions = Vector{PT}()
-    for (ix, b) in enumerate(buses)
-        if !isempty(get_ext(b))
-            ext = get_ext(b)
-            lat = tryparse(Float64, "$(get(ext, "latitude", get(ext, "lat", nothing)))")
-            lon = tryparse(Float64, "$(get(ext, "longitude", get(ext, "lon", nothing)))")
-            if !isnothing(lat) && !isnothing(lon)
-                push!(initial_positions, PT(lon, lat))
-            else
-                fixed[ix] = false
-            end
-        end
-    end
+
+    fixed = get_prop(g, :fixed)
     sort_ids = vcat(findall(fixed), findall(.!fixed))
     orig_ids = sortperm(sort_ids)
     sorted_a = a[sort_ids, sort_ids]
 
     @info "calculating node locations with SFDP_Fixed"
     K = get(kwargs, :K, 0.1)
+    ip = get_prop(g, :initial_position)
+    setdiff!(ip, ip[findall(isnothing, ip)])
     network = sfdp_fixed(
         sorted_a;
         tol = 1.0,
@@ -125,29 +121,21 @@ function make_graph(sys::PowerSystems.System; kwargs...)
         K = K,
         iterations = 100,
         fixed = true,
-        initialpos = initial_positions,
+        initialpos = ip,
     )[orig_ids] # generate 2D layout and sort back to order of a
 
     set_prop!(g, :x, first.(network))
     set_prop!(g, :y, last.(network))
     name_accessor = get(kwargs, :name_accessor, get_name)
-    set_prop!(g, :name, name_accessor.(buses))
+    set_prop!(g, :name, name_accessor.(get_components(Bus, sys)))
 
     return g
 end
 
 function plot_lines!(p, sys, line_width)
     components = collect(get_components(Branch, sys))
-    fr_lat_lon = get_ext.(get_from.(get_arc.(components)))
-    to_lat_lon = get_ext.(get_to.(get_arc.(components)))
-    fr_xy = [
-        PSM.lonlat_to_webmercator((PSM.get_longitude(p), PSM.get_latitude(p))) for
-        p in fr_lat_lon
-    ]
-    to_xy = [
-        PSM.lonlat_to_webmercator((PSM.get_longitude(p), PSM.get_latitude(p))) for
-        p in to_lat_lon
-    ]
+    fr_xy = lonlat_to_webmercator.(get_lonlat.(get_from.(get_arc.(components))))
+    to_xy = lonlat_to_webmercator.(get_lonlat.(get_to.(get_arc.(components))))
 
     xy = []
     groups = []
@@ -194,7 +182,7 @@ Accepted kwargs:
 """
 function plot_net(g; kwargs...)
     p = plot()
-    plot_net!(p, g; kwargs)
+    plot_net!(p, g; kwargs...)
 end
 
 """
@@ -294,6 +282,18 @@ function lonlat_to_webmercator(xLon, yLat)
     return x, y
 end
 
+function get_lonlat(b::Bus)
+    (lon, lat) = [DEFAULT_LON, DEFAULT_LAT]
+    for gi in get_supplemental_attributes(GeographicInfo, b)
+        if get(gi.geo_json, "type", "") == "Point"
+            (lon, lat) = gi.geo_json["coordinates"]
+        else
+            @error """geo_json must include "type" => "Point" and "coordinates" => [x, y] entries"""
+        end
+    end
+    return (lon, lat)
+end
+
 function lonlat_to_webmercator(xy::Tuple)
     return lonlat_to_webmercator(first(xy), last(xy))
 end
@@ -321,7 +321,7 @@ add dots for components on existing plot
 """
 function plot_components!(p, components, color, markersize, label)
     labels = get_name.(components)
-    lat_lons = get_ext.(get_bus.(components))
+    lat_lons = get_lonlat.(get_bus.(components))
     plot_components!(p, labels, lat_lons, color, markersize, label)
 end
 
@@ -333,35 +333,22 @@ function plot_components!(
     label,
 )
     labels = get_name.(components)
-    lat_lons = get_ext.(components)
+    lat_lons = get_lonlat.(components)
     plot_components!(p, labels, lat_lons, color, markersize, label)
 end
 
-function get_longitude(ext)
-    lon = get(ext, "longitude", get(ext, "lon", DEFAULT_LON))
-    return parse(Float64, "$lon")
+function get_longitude(bus::Bus)
+    (lon, lat) = get_lonlat(bus)
+    return lon
 end
-function get_latitude(ext)
-    lat = get(ext, "latitude", get(ext, "lat", DEFAULT_LAT))
-    return parse(Float64, "$lat")
+function get_latitude(bus::Bus)
+    (lon, lat) = get_lonlat(bus)
+    return lat
 end
 
 function plot_components!(p, labels, lat_lons, color, markersize, label)
-    xy = [lonlat_to_webmercator((get_longitude(l), get_latitude(l))) for l in lat_lons]
+    xy = lonlat_to_webmercator.(lat_lons)
     x = first.(xy)
     y = last.(xy)
     scatter!(p, x, y; color = color, markersize = markersize, hover = labels, label = label)
 end
-
-component_locs(components) = collect(
-    zip(
-        [get_latitude(x) for x in get_ext.(get_bus.(components))],
-        [get_longitude(x) for x in get_ext.(get_bus.(components))],
-    ),
-)
-component_locs(components::PowerSystems.IS.FlattenIteratorWrapper{Bus}) = collect(
-    zip(
-        [get_latitude(x) for x in get_ext.(components)],
-        [get_longitude(x) for x in get_ext.(components)],
-    ),
-)

@@ -1,9 +1,8 @@
 
 sys = make_test_sys()
-
 @testset "test maps" begin
     g = make_graph(sys; K = 0.01)
-    @test typeof(g) == PSM.MetaGraphs.MetaGraph{Int64, Float64}
+    @test typeof(g) <: PSM.MetaGraphsNext.MetaGraph
     @test length(PSM.get_prop(g, :x)) == 200
     shp = PSM.Shapefile.shapes(
         PSM.Shapefile.Table(

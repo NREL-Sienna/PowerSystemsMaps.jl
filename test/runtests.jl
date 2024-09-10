@@ -2,13 +2,11 @@ using Test
 using TestSetExtensions
 using Logging
 using PowerSystems
-using PowerSystemCaseBuilder
 using PowerSystemsMaps
 import DataFrames
 import CSV
 
 const PSY = PowerSystems
-const PSB = PowerSystemCaseBuilder
 const PSM = PowerSystemsMaps
 const IS = PSY.IS
 
@@ -28,8 +26,19 @@ function make_test_sys()
     locs = CSV.read(joinpath(TEST_DIR, "test_data", "bus_locs.csv"), DataFrames.DataFrame)
     for row in DataFrames.eachrow(locs)
         bus = first(get_components(x -> occursin(row.name, get_name(x)), Bus, sys))
-        !isnothing(bus) &&
-            set_ext!(bus, Dict("latitude" => row.latitude, "longitude" => row.longitude))
+        if !isnothing(bus)
+            #set_ext!(bus, Dict("latitude" => row.latitude, "longitude" => row.longitude))
+            add_supplemental_attribute!(
+                sys,
+                bus,
+                GeographicInfo(;
+                    geo_json = Dict(
+                        "type" => "Point",
+                        "coordinates" => [row.longitude, row.latitude],
+                    ),
+                ),
+            )
+        end
     end
     return sys
 end
