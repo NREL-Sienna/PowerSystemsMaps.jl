@@ -22,14 +22,7 @@ function color_nodes!(
     ),
 )
     for (ix, b) in enumerate(get_components(Bus, sys))
-        ext = get_ext(b)
-        a =
-            if (haskey(ext, "lat") & haskey(ext, "lon")) ||
-               (haskey(ext, "latitude") & haskey(ext, "longitude"))
-                1.0
-            else
-                0.1
-            end
+        a = has_supplemental_attributes(b, GeographicInfo) ? 1.0 : 0.1
         g[get_name(b)][:nodecolor] = node_colors[ix]
         g[get_name(b)][:alpha] = a
     end
@@ -85,14 +78,10 @@ function make_graph(sys::PowerSystems.System; kwargs...)
             :area => get_name(get_area(b)),
             :fixed => false
             )
-        if !isempty(get_ext(b))
-                ext = get_ext(b)
-                lat = tryparse(Float64, "$(get(ext, "latitude", get(ext, "lat", nothing)))")
-                lon = tryparse(Float64, "$(get(ext, "longitude", get(ext, "lon", nothing)))")
-                if !isnothing(lat) && !isnothing(lon)
-                    data[:initial_position] = PT(lon, lat)
-                    data[:fixed] = true
-                end
+        if has_supplemental_attributes(GeographicInfo, b)
+                (lon, lat) = get_lonlat(b)
+                data[:initial_position] = PT(lon, lat)
+                data[:fixed] = true
         end
         g[get_name(b)] = data
 
@@ -104,21 +93,11 @@ function make_graph(sys::PowerSystems.System; kwargs...)
     end
 
     # color nodes
-    #fixed_colors = Dict(zip(unique(fixed), distinguishable_colors(2, colorant"blue")))
-    #node_colors = getindex.(Ref(fixed_colors), fixed)
     color_by = get(kwargs, :color_by, :area)
     color_nodes!(g, sys, color_by)
 
     # layout nodes
     a = adjacency_matrix(g) # generates a sparse adjacency matrix
-    #a = Adjacency(sys, check_connectivity = false).data
-
-    # for (ix, b) in enumerate(buses)
-    #     loc = get_supplemental_attributes(GeographicInfo, b)
-    #     isempty(b) && continue
-    #     push!(initial_positions, PT(loc.geo_json["coordinates"][1], loc.geo_json["coordinates"][2]))
-    #     fixed[ix] = true
-    # end
 
     fixed = get_prop(g, :fixed)
     sort_ids = vcat(findall(fixed), findall(.!fixed))
@@ -149,16 +128,8 @@ end
 
 function plot_lines!(p, sys, line_width)
     components = collect(get_components(Branch, sys))
-    fr_lat_lon = get_supplemental_attributes.(GeographicInfo, get_from.(get_arc.(components))).geo_json["coordinates"]
-    to_lat_lon = get_supplemental_attributes.(GeographicInfo. get_to.(get_arc.(components))).geo_json["coordinates"]
-    fr_xy = [
-        lonlat_to_webmercator((get_longitude(p), get_latitude(p))) for
-        p in fr_lat_lon
-    ]
-    to_xy = [
-        lonlat_to_webmercator((get_longitude(p), get_latitude(p))) for
-        p in to_lat_lon
-    ]
+    fr_xy = lonlat_to_webmercator.(get_lonlat.(get_from.(get_arc.(components))))
+    to_xy = lonlat_to_webmercator.(get_lonlat.(get_to.(get_arc.(components))))
 
     xy = []
     groups = []
@@ -305,6 +276,18 @@ function lonlat_to_webmercator(xLon, yLat)
     return x, y
 end
 
+function get_lonlat(b::Bus)
+    (lon, lat) = [DEFAULT_LON, DEFAULT_LAT]
+    for gi in get_supplemental_attributes(GeographicInfo, b)
+        if get(gi.geo_json, "type", "") == "Point"
+            (lon, lat) = gi.geo_json["coordinates"]
+        else
+            @error """geo_json must include "type" => "Point" and "coordinates" => [x, y] entries"""
+        end
+    end
+    return (lon, lat)
+end
+
 function lonlat_to_webmercator(xy::Tuple)
     return lonlat_to_webmercator(first(xy), last(xy))
 end
@@ -332,7 +315,7 @@ add dots for components on existing plot
 """
 function plot_components!(p, components, color, markersize, label)
     labels = get_name.(components)
-    lat_lons = get_ext.(get_bus.(components))
+    lat_lons = get_lonlat.(get_bus.(components))
     plot_components!(p, labels, lat_lons, color, markersize, label)
 end
 
@@ -344,35 +327,22 @@ function plot_components!(
     label,
 )
     labels = get_name.(components)
-    lat_lons = get_ext.(components)
+    lat_lons = get_lonlat.(components)
     plot_components!(p, labels, lat_lons, color, markersize, label)
 end
 
-function get_longitude(ext)
-    lon = get(ext, "longitude", get(ext, "lon", DEFAULT_LON))
-    return parse(Float64, "$lon")
+function get_longitude(bus::Bus)
+    (lon, lat) = get_lonlat(bus)
+    return lon
 end
-function get_latitude(ext)
-    lat = get(ext, "latitude", get(ext, "lat", DEFAULT_LAT))
-    return parse(Float64, "$lat")
+function get_latitude(bus::Bus)
+    (lon, lat) = get_lonlat(bus)
+    return lat
 end
 
 function plot_components!(p, labels, lat_lons, color, markersize, label)
-    xy = [lonlat_to_webmercator((get_longitude(l), get_latitude(l))) for l in lat_lons]
+    xy = lonlat_to_webmercator.(lat_lons)
     x = first.(xy)
     y = last.(xy)
     scatter!(p, x, y; color = color, markersize = markersize, hover = labels, label = label)
 end
-
-component_locs(components) = collect(
-    zip(
-        [get_latitude(x) for x in get_ext.(get_bus.(components))],
-        [get_longitude(x) for x in get_ext.(get_bus.(components))],
-    ),
-)
-component_locs(components::PowerSystems.IS.FlattenIteratorWrapper{Bus}) = collect(
-    zip(
-        [get_latitude(x) for x in get_ext.(components)],
-        [get_longitude(x) for x in get_ext.(components)],
-    ),
-)
