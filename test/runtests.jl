@@ -2,13 +2,11 @@ using Test
 using TestSetExtensions
 using Logging
 using PowerSystems
-using PowerSystemCaseBuilder
 using PowerSystemsMaps
 import DataFrames
 import CSV
 
 const PSY = PowerSystems
-const PSB = PowerSystemCaseBuilder
 const PSM = PowerSystemsMaps
 const IS = PSY.IS
 

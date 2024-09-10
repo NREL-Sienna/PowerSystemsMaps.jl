@@ -1,7 +1,7 @@
 module PowerSystemsMaps
 
 using PowerSystems
-using Graphs, MetaGraphs #graphs
+using Graphs, MetaGraphsNext #graphs
 using Plots
 import Colors
 import NetworkLayout
