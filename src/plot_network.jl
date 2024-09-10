@@ -4,7 +4,7 @@ const DEFAULT_LON = "-122.8230"
 const DEFAULT_LAT = "37.8270"
 
 function set_prop!(g::MetaGraph, field::Symbol, data)
-    for (ix,v) in enumerate(labels(g))
+    for (ix, v) in enumerate(labels(g))
         g[v][field] = data[ix]
     end
 end
@@ -69,27 +69,33 @@ Accepted kwargs:
 """
 function make_graph(sys::PowerSystems.System; kwargs...)
     @info "creating graph from System"
-    g = MetaGraph(Graph(), label_type = String, vertex_data_type = Dict{Symbol, Any}, edge_data_type = Vector{<:Branch}, graph_data = "data")
+    g = MetaGraph(
+        Graph();
+        label_type = String,
+        vertex_data_type = Dict{Symbol, Any},
+        edge_data_type = Vector{<:Branch},
+        graph_data = "data",
+    )
 
-    for b in get_components(Bus,sys)
-        data =Dict(
+    for b in get_components(Bus, sys)
+        data = Dict(
             :name => get_name(b),
             :number => get_number(b),
             :area => get_name(get_area(b)),
-            :fixed => false
-            )
+            :fixed => false,
+        )
         if has_supplemental_attributes(GeographicInfo, b)
-                (lon, lat) = get_lonlat(b)
-                data[:initial_position] = PT(lon, lat)
-                data[:fixed] = true
+            (lon, lat) = get_lonlat(b)
+            data[:initial_position] = PT(lon, lat)
+            data[:fixed] = true
         end
         g[get_name(b)] = data
-
     end
     for a in get_components(Arc, sys)
         fr = get_from(a)
         to = get_to(a)
-        g[get_name.([fr, to])...] = collect(get_components(x -> get_arc(x) == a, Branch, sys))
+        g[get_name.([fr, to])...] =
+            collect(get_components(x -> get_arc(x) == a, Branch, sys))
     end
 
     # color nodes

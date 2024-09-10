@@ -31,7 +31,12 @@ function make_test_sys()
             add_supplemental_attribute!(
                 sys,
                 bus,
-                GeographicInfo(geo_json = Dict("type" => "Point", "coordinates" =>[row.longitude, row.latitude]))
+                GeographicInfo(;
+                    geo_json = Dict(
+                        "type" => "Point",
+                        "coordinates" => [row.longitude, row.latitude],
+                    ),
+                ),
             )
         end
     end
