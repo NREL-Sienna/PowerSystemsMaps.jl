@@ -110,19 +110,23 @@ function make_graph(sys::PowerSystems.System; kwargs...)
     orig_ids = sortperm(sort_ids)
     sorted_a = a[sort_ids, sort_ids]
 
-    @info "calculating node locations with SFDP_Fixed"
-    K = get(kwargs, :K, 0.1)
     ip = get_prop(g, :initial_position)
-    setdiff!(ip, ip[findall(isnothing, ip)])
-    network = sfdp_fixed(
-        sorted_a;
-        tol = 1.0,
-        C = 0.0002,
-        K = K,
-        iterations = 100,
-        fixed = true,
-        initialpos = ip,
-    )[orig_ids] # generate 2D layout and sort back to order of a
+    if orig_ids != sort_ids
+        @info "calculating node locations with SFDP_Fixed"
+        K = get(kwargs, :K, 0.1)
+        setdiff!(ip, ip[findall(isnothing, ip)])
+        network = sfdp_fixed(
+            sorted_a;
+            tol = 1.0,
+            C = 0.0002,
+            K = K,
+            iterations = 100,
+            fixed = true,
+            initialpos = ip,
+        )[orig_ids] # generate 2D layout and sort back to order of a
+    else
+        network = ip
+    end
 
     set_prop!(g, :x, first.(network))
     set_prop!(g, :y, last.(network))
@@ -260,8 +264,8 @@ end
 function lonlat_to_webmercator(xLon, yLat)
 
     # Check coordinates are in range
-    abs(xLon) <= 180 || throw("Maximum longitude is 180.")
-    abs(yLat) < 85.051129 || throw(
+    abs(xLon) > 180 && throw("Maximum longitude is 180.")
+    abs(yLat) >= 85.051129 && throw(
         "Web Mercator maximum lattitude is 85.051129. This is the lattitude at which the full map becomes a square.",
     )
 
