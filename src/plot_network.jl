@@ -138,7 +138,7 @@ function plot_lines!(p, sys, line_width)
     labels = []
     for (i, c) in enumerate(components)
         push!(xy, [fr_xy[i][1] fr_xy[i][2]; to_xy[i][1] to_xy[i][2]; NaN NaN])
-        for _ = 1:3
+        for _ in 1:3
             push!(groups, get_base_voltage(get_from(get_arc(c))))
             push!(labels, get_name(c))
         end
