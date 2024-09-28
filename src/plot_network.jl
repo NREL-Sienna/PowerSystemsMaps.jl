@@ -72,7 +72,7 @@ function make_graph(sys::PowerSystems.System; kwargs...)
     g = MetaGraph(
         Graph();
         label_type = String,
-        vertex_data_type = Dict{Symbol,Any},
+        vertex_data_type = Dict{Symbol, Any},
         edge_data_type = Vector{<:Branch},
         graph_data = "data",
     )
