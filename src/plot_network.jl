@@ -1,5 +1,5 @@
 
-PT = GeometryBasics.Point{2, Float64}
+PT = GeometryBasics.Point{2,Float64}
 const DEFAULT_LON = "-122.8230"
 const DEFAULT_LAT = "37.8270"
 
@@ -28,7 +28,7 @@ function color_nodes!(
     end
 end
 
-function color_nodes!(g, sys, color_by::Type{T}) where {T <: AggregationTopology}
+function color_nodes!(g, sys, color_by::Type{T}) where {T<:AggregationTopology}
     # Generate n maximally distinguishable colors in LCHab space.
     accessor = get_aggregation_topology_accessor(color_by)
     agg_top = get_components(color_by, sys)
@@ -72,7 +72,7 @@ function make_graph(sys::PowerSystems.System; kwargs...)
     g = MetaGraph(
         Graph();
         label_type = String,
-        vertex_data_type = Dict{Symbol, Any},
+        vertex_data_type = Dict{Symbol,Any},
         edge_data_type = Vector{<:Branch},
         graph_data = "data",
     )
@@ -138,7 +138,7 @@ function plot_lines!(p, sys, line_width)
     labels = []
     for (i, c) in enumerate(components)
         push!(xy, [fr_xy[i][1] fr_xy[i][2]; to_xy[i][1] to_xy[i][2]; NaN NaN])
-        for _ in 1:3
+        for _ = 1:3
             push!(groups, get_base_voltage(get_from(get_arc(c))))
             push!(labels, get_name(c))
         end
@@ -252,17 +252,55 @@ function plot_net!(p::Plots.Plot, g; kwargs...)
     return p
 end
 
+"""
+map network on top of basemap
 
+Accepted kwargs for network plot:
+ - `lines::Bool` : show lines
+ - `linealpha::Union{Float, Vector{Float}}` : line transparency
+ - `nodesize::Union{Float, Vector{Float}}` : node size
+ - `nodehover::Union{String, Vector{String}}` : node hover text
+ - `linewidth::Float` : width of lines
+ - `linecolor::String` : line color
+ - `buffer::Float`
+ - `size::Tuple` : figure size
+ - `xlim::Tuple` : crop x axis
+ - `ylim::Tuple` : crop y axis
+ - `showleged::Bool` : show legend
+ - `nodecolor::String` : node color
+ - `nodealpha::Float` : node transparency
+ - `legend_font_color::String` : legend font color
+
+Accepted kwargs for map:
+ - `map_lines::Bool` : show lines
+ - `map_linealpha::Union{Float, Vector{Float}}` : line transparency
+ - `map_nodesize::Union{Float, Vector{Float}}` : node size
+ - `map_nodehover::Union{String, Vector{String}}` : node hover text
+ - `map_linewidth::Float` : width of lines
+ - `map_linecolor::String` : line color
+ - `map_buffer::Float`
+ - `map_size::Tuple` : figure size
+ - `map_xlim::Tuple` : crop x axis
+ - `map_ylim::Tuple` : crop y axis
+ - `map_showleged::Bool` : show legend
+ - `map_nodecolor::String` : node color
+ - `map_nodealpha::Float` : node transparency
+ - `map_legend_font_color::String` : legend font color
+"""
 function plot_map(sys::System, shapefile::AbstractString; kwargs...)
-    g = make_graph(sys; kwargs)
+    g = make_graph(sys; kwargs...)
     shp = Shapefile.shapes(Shapefile.Table(shapefile))
     shp = lonlat_to_webmercator(shp) #adjust coordinates
 
+    map_kwargs = filter(x -> startswith(string(first(x)), "map_"), kwargs)
+    kwargs = setdiff(kwargs, map_kwargs)
+    map_kwargs = [Symbol(replace(string(k), "map_" => "")) => v for (k, v) in map_kwargs]
+
     # plot a map from shapefile
-    p = plot(shp; kwargs)
+    p = plot(shp; map_kwargs...)
 
     # plot the network on the map
-    p = plot_net!(p, g; kwargs)
+    p = plot_net!(p, g; kwargs...)
     return p
 end
 
@@ -312,7 +350,7 @@ function lonlat_to_webmercator(xy::Shapefile.Point)
     return lonlat_to_webmercator(xy.x, xy.y)
 end
 
-function lonlat_to_webmercator(shp::Vector{Union{Missing, Shapefile.Polygon}})
+function lonlat_to_webmercator(shp::Vector{Union{Missing,Shapefile.Polygon}})
     return [lonlat_to_webmercator(polygon) for polygon in shp]
 end
 

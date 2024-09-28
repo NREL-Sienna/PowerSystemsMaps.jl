@@ -23,7 +23,10 @@ LOG_LEVELS = Dict(
 
 function make_test_sys()
     sys = System(joinpath(TEST_DIR, "test_data", "case_ACTIVSg200.m"))
-    locs = PSY.CSV.read(joinpath(TEST_DIR, "test_data", "bus_locs.csv"), PSY.DataFrames.DataFrame)
+    locs = PSY.CSV.read(
+        joinpath(TEST_DIR, "test_data", "bus_locs.csv"),
+        PSY.DataFrames.DataFrame,
+    )
     for row in PSY.DataFrames.eachrow(locs)
         bus = first(get_components(x -> occursin(row.name, get_name(x)), Bus, sys))
         if !isnothing(bus)
