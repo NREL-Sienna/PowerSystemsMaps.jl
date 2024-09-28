@@ -1,7 +1,7 @@
 name = "PowerSystemsMaps"
 uuid = "e146f72c-d4f8-45d3-b3ca-12a16cb68a38"
 authors = ["cbarrows <clayton.barrows@nrel.gov>"]
-version = "0.2.0"
+version = "0.2.1"
 
 [deps]
 Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
