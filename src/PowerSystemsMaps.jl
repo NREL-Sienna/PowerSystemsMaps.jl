@@ -15,8 +15,8 @@ export plot_net
 export plot_net!
 export plot_components!
 export make_graph
+export plot_map
 
 include("plot_network.jl")
-include("sfdp_fixed.jl")
 
 end # module PowerSystemsMaps

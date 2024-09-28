@@ -82,12 +82,10 @@ function make_graph(sys::PowerSystems.System; kwargs...)
             :name => get_name(b),
             :number => get_number(b),
             :area => get_name(get_area(b)),
-            :fixed => false,
         )
         if has_supplemental_attributes(GeographicInfo, b)
             (lon, lat) = get_lonlat(b)
             data[:initial_position] = PT(lon, lat)
-            data[:fixed] = true
         end
         g[get_name(b)] = data
     end
@@ -105,24 +103,22 @@ function make_graph(sys::PowerSystems.System; kwargs...)
     # layout nodes
     a = adjacency_matrix(g) # generates a sparse adjacency matrix
 
-    fixed = get_prop(g, :fixed)
-    sort_ids = vcat(findall(fixed), findall(.!fixed))
-    orig_ids = sortperm(sort_ids)
-    sorted_a = a[sort_ids, sort_ids]
+    ip = Dict(zip(1:nv(g), get_prop(g, :initial_position)))
+    filter!(p -> !isnothing(last(p)), ip)
 
-    @info "calculating node locations with SFDP_Fixed"
-    K = get(kwargs, :K, 0.1)
-    ip = get_prop(g, :initial_position)
-    setdiff!(ip, ip[findall(isnothing, ip)])
-    network = sfdp_fixed(
-        sorted_a;
-        tol = 1.0,
-        C = 0.0002,
-        K = K,
-        iterations = 100,
-        fixed = true,
-        initialpos = ip,
-    )[orig_ids] # generate 2D layout and sort back to order of a
+    if length(ip) != nv(g)
+        @info "calculating node locations with SFDP"
+        network = NetworkLayout.sfdp(
+            a;
+            tol = get(kwargs, :tol, 1.0),
+            C = get(kwargs, :C, 0.0002),
+            K = get(kwargs, :K, 0.1),
+            iterations = get(kwargs, :iterations, 100),
+            pin = ip,
+        )
+    else
+        network = ip
+    end
 
     set_prop!(g, :x, first.(network))
     set_prop!(g, :y, last.(network))
@@ -256,12 +252,64 @@ function plot_net!(p::Plots.Plot, g; kwargs...)
     return p
 end
 
+"""
+map network on top of basemap
+
+Accepted kwargs for network plot:
+ - `lines::Bool` : show lines
+ - `linealpha::Union{Float, Vector{Float}}` : line transparency
+ - `nodesize::Union{Float, Vector{Float}}` : node size
+ - `nodehover::Union{String, Vector{String}}` : node hover text
+ - `linewidth::Float` : width of lines
+ - `linecolor::String` : line color
+ - `buffer::Float`
+ - `size::Tuple` : figure size
+ - `xlim::Tuple` : crop x axis
+ - `ylim::Tuple` : crop y axis
+ - `showleged::Bool` : show legend
+ - `nodecolor::String` : node color
+ - `nodealpha::Float` : node transparency
+ - `legend_font_color::String` : legend font color
+
+Accepted kwargs for map:
+ - `map_lines::Bool` : show lines
+ - `map_linealpha::Union{Float, Vector{Float}}` : line transparency
+ - `map_nodesize::Union{Float, Vector{Float}}` : node size
+ - `map_nodehover::Union{String, Vector{String}}` : node hover text
+ - `map_linewidth::Float` : width of lines
+ - `map_linecolor::String` : line color
+ - `map_buffer::Float`
+ - `map_size::Tuple` : figure size
+ - `map_xlim::Tuple` : crop x axis
+ - `map_ylim::Tuple` : crop y axis
+ - `map_showleged::Bool` : show legend
+ - `map_nodecolor::String` : node color
+ - `map_nodealpha::Float` : node transparency
+ - `map_legend_font_color::String` : legend font color
+"""
+function plot_map(sys::System, shapefile::AbstractString; kwargs...)
+    g = make_graph(sys; kwargs...)
+    shp = Shapefile.shapes(Shapefile.Table(shapefile))
+    shp = lonlat_to_webmercator(shp) #adjust coordinates
+
+    map_kwargs = filter(x -> startswith(string(first(x)), "map_"), kwargs)
+    kwargs = setdiff(kwargs, map_kwargs)
+    map_kwargs = [Symbol(replace(string(k), "map_" => "")) => v for (k, v) in map_kwargs]
+
+    # plot a map from shapefile
+    p = plot(shp; map_kwargs...)
+
+    # plot the network on the map
+    p = plot_net!(p, g; kwargs...)
+    return p
+end
+
 # borrowed from
 function lonlat_to_webmercator(xLon, yLat)
 
     # Check coordinates are in range
-    abs(xLon) <= 180 || throw("Maximum longitude is 180.")
-    abs(yLat) < 85.051129 || throw(
+    abs(xLon) > 180 && throw("Maximum longitude is 180.")
+    abs(yLat) >= 85.051129 && throw(
         "Web Mercator maximum lattitude is 85.051129. This is the lattitude at which the full map becomes a square.",
     )
 
