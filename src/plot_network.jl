@@ -82,12 +82,10 @@ function make_graph(sys::PowerSystems.System; kwargs...)
             :name => get_name(b),
             :number => get_number(b),
             :area => get_name(get_area(b)),
-            :fixed => false,
         )
         if has_supplemental_attributes(GeographicInfo, b)
             (lon, lat) = get_lonlat(b)
             data[:initial_position] = PT(lon, lat)
-            data[:fixed] = true
         end
         g[get_name(b)] = data
     end
@@ -105,25 +103,19 @@ function make_graph(sys::PowerSystems.System; kwargs...)
     # layout nodes
     a = adjacency_matrix(g) # generates a sparse adjacency matrix
 
-    fixed = get_prop(g, :fixed)
-    sort_ids = vcat(findall(fixed), findall(.!fixed))
-    orig_ids = sortperm(sort_ids)
-    sorted_a = a[sort_ids, sort_ids]
+    ip = Dict(zip(1:nv(g), get_prop(g, :initial_position)))
+    filter!(p -> !isnothing(last(p)), ip)
 
-    ip = get_prop(g, :initial_position)
-    if orig_ids != sort_ids
-        @info "calculating node locations with SFDP_Fixed"
-        K = get(kwargs, :K, 0.1)
-        setdiff!(ip, ip[findall(isnothing, ip)])
-        network = sfdp_fixed(
-            sorted_a;
-            tol = 1.0,
-            C = 0.0002,
-            K = K,
-            iterations = 100,
-            fixed = true,
-            initialpos = ip,
-        )[orig_ids] # generate 2D layout and sort back to order of a
+    if length(ip) != nv(g)
+        @info "calculating node locations with SFDP"
+        network = NetworkLayout.sfdp(
+            a;
+            tol = get(kwargs, :tol, 1.0),
+            C = get(kwargs, :C, 0.0002),
+            K = get(kwargs, :K, 0.1),
+            iterations = get(kwargs, :iterations, 100),
+            pin = ip,
+        )
     else
         network = ip
     end
@@ -257,6 +249,20 @@ function plot_net!(p::Plots.Plot, g; kwargs...)
         ylim = ylim,
         size = size,
     )
+    return p
+end
+
+
+function plot_map(sys::System, shapefile::AbstractString; kwargs...)
+    g = make_graph(sys; kwargs)
+    shp = Shapefile.shapes(Shapefile.Table(shapefile))
+    shp = lonlat_to_webmercator(shp) #adjust coordinates
+
+    # plot a map from shapefile
+    p = plot(shp; kwargs)
+
+    # plot the network on the map
+    p = plot_net!(p, g; kwargs)
     return p
 end
 
