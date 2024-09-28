@@ -1,5 +1,5 @@
 
-PT = GeometryBasics.Point{2,Float64}
+PT = GeometryBasics.Point{2, Float64}
 const DEFAULT_LON = "-122.8230"
 const DEFAULT_LAT = "37.8270"
 
