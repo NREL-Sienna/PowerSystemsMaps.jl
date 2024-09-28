@@ -28,7 +28,7 @@ function color_nodes!(
     end
 end
 
-function color_nodes!(g, sys, color_by::Type{T}) where {T<:AggregationTopology}
+function color_nodes!(g, sys, color_by::Type{T}) where {T <: AggregationTopology}
     # Generate n maximally distinguishable colors in LCHab space.
     accessor = get_aggregation_topology_accessor(color_by)
     agg_top = get_components(color_by, sys)
