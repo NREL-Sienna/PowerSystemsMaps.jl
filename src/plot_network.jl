@@ -350,7 +350,7 @@ function lonlat_to_webmercator(xy::Shapefile.Point)
     return lonlat_to_webmercator(xy.x, xy.y)
 end
 
-function lonlat_to_webmercator(shp::Vector{Union{Missing,Shapefile.Polygon}})
+function lonlat_to_webmercator(shp::Vector{Union{Missing, Shapefile.Polygon}})
     return [lonlat_to_webmercator(polygon) for polygon in shp]
 end
 
