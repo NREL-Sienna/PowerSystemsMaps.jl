@@ -117,7 +117,7 @@ function make_graph(sys::PowerSystems.System; kwargs...)
             pin = ip,
         )
     else
-        network = ip
+        network = collect(values(ip))
     end
 
     set_prop!(g, :x, first.(network))
