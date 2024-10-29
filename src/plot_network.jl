@@ -16,15 +16,16 @@ end
 function color_nodes!(
     g,
     sys,
-    node_colors::Vector{Colors.RGB{Colors.N0f8}} = map(
-        x -> Colors.RGB{Colors.N0f8}(1.0, 0.0, 0.0),
+    node_colors::Vector{Pair{String, Colors.RGB{Colors.N0f8}}} = map(
+        x -> "node" => Colors.RGB{Colors.N0f8}(1.0, 0.0, 0.0),
         1:nv(g),
     ),
 )
     for (ix, b) in enumerate(get_components(Bus, sys))
         a = has_supplemental_attributes(b, GeographicInfo) ? 1.0 : 0.1
-        g[get_name(b)][:nodecolor] = node_colors[ix]
+        g[get_name(b)][:nodecolor] = last(node_colors[ix])
         g[get_name(b)][:alpha] = a
+        g[get_name(b)][:group] = first(node_colors[ix])
     end
 end
 
@@ -39,9 +40,8 @@ function color_nodes!(g, sys, color_by::Type{T}) where {T <: AggregationTopology
             Colors.distinguishable_colors(length(agg_top), Colors.colorant"blue"),
         ),
     )
-    node_colors = getindex.(Ref(area_colors), get_name.(accessor.(buses)))
+    node_colors = [n => area_colors[n] for n in get_name.(accessor.(buses))]
     color_nodes!(g, sys, node_colors)
-    set_prop!(g, :group, get_name.(accessor.(buses)))
 end
 
 function color_nodes!(g, sys, color_by)
@@ -54,9 +54,8 @@ function color_nodes!(g, sys, color_by)
             Colors.distinguishable_colors(length(unique(colorvals)), Colors.colorant"blue"),
         ),
     )
-    node_colors = getindex.(Ref(field_colors), colorvals)
+    node_colors = [n => field_colors[n] for n in colorvals]
     color_nodes!(g, sys, node_colors)
-    set_prop!(g, :group, colorvals)
 end
 
 """
@@ -233,15 +232,17 @@ function plot_net!(p::Plots.Plot, g; kwargs...)
     @info "plotting nodes"
     shownodelegend = get(kwargs, :shownodelegend, true)
     group = shownodelegend ? get_prop(g, :group) : ["node" for g in get_prop(g, :group)]
+    seriescolor = get(kwargs, :nodecolor, get_prop(g, :nodecolor))
     p = scatter!(
         p,
         first.(m),
         last.(m);
-        markercolor = get(kwargs, :nodecolor, get_prop(g, :nodecolor)),
+        markercolor = seriescolor,
         markeralpha = get(kwargs, :nodealpha, get_prop(g, :alpha)),
-        markerstrokecolor = get(kwargs, :nodecolor, get_prop(g, :nodecolor)),
+        markerstrokecolor = seriescolor,
         markersize = nodesize,
         group = group,
+        seriescolor = seriescolor,
         hover = nodehover,
         legend = shownodelegend,
         legend_font_color = get(kwargs, :legend_font_color, :black),
